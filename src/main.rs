@@ -79,6 +79,7 @@ fn infix_binding_power(op: char) -> (u8, u8)
     match op {
         '+' | '-' => (1, 2),
         '*' | '/' => (3, 4),
+        '.' => (6, 5),          // high-priority right-associative function composition operator
         _ => panic!("bad op {:?}", op)
     }
 }
@@ -144,6 +145,14 @@ fn tests() {
 
     let s = expr("a + b * c * d + e");
     assert_eq!(s.to_string(), "(+ (+ a (* (* b c) d)) e)");
+
+    // Test the function composition operator '.'
+    let s = expr("f . g .h ");
+    assert_eq!(s.to_string(), "(. f (. g h))");
+
+    // This works even with the other operators 
+    let s = expr("1 + 2 + f . g . h * 3 * 4");
+    assert_eq!(s.to_string(), "(+ (+ 1 2) (* (* (. f (. g h)) 3) 4))");
 }
 
 // === TESTS ==== //
