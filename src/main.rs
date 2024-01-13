@@ -12,6 +12,7 @@
 use std::fmt;
 
 
+// Tokenization section
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Token {
     Atom(char),
@@ -86,9 +87,14 @@ fn infix_binding_power(op: char) -> (u8, u8)
 fn expr(input: &str) -> S 
 {
     let mut lexer = Lexer::new(input);
-    expr_bp(&mut lexer, 0)
+    // We use a binding power of zero here to start recursion
+    expr_bp(&mut lexer, 0)     
 }
 
+/*
+ * expr_bp()
+ *
+ */
 fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> S 
 {
     let mut lhs = match lexer.next() {
@@ -103,6 +109,12 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> S
             t => panic!("bad token {:?}", t),
         };
 
+        // Using the parameter min_bp here allows us to break the loop
+        // once we see an operator weaker than the current one. We then 
+        // return back up the stack to the weak point and call lexer.next()
+        // to make the next recursive call.
+        // In a way, min_bp represents the binding power of the operator
+        // to the left of the current expression.
         let (left_bp, right_bp) = infix_binding_power(op);
         if left_bp < min_bp {
             break;
@@ -111,6 +123,8 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> S
         lexer.next();
         let rhs = expr_bp(lexer, right_bp);
 
+        // At this point we've parsed the correct right side, so we can assemble
+        // the current S-Expression.
         lhs = S::Cons(op, vec![lhs, rhs]);
     }
 
@@ -127,6 +141,9 @@ fn tests() {
 
     let s = expr("1 + 2 * 3");
     assert_eq!(s.to_string(), "(+ 1 (* 2 3))");
+
+    let s = expr("a + b * c * d + e");
+    assert_eq!(s.to_string(), "(+ (+ a (* (* b c) d)) e)");
 }
 
 // === TESTS ==== //
