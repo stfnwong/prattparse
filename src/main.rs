@@ -156,7 +156,19 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> S
             }
             lexer.next();
 
-            lhs = S::Cons(op, vec![lhs]);
+            // We can add an array indexing operator here by observing that in a 
+            // expression like a[i], the 'i' doesn't really 'bind' to anything from 
+            // the parsers point of view. In a sense, the '[]' part of the expression
+            // is like a paren expression in the location of a postfix operator.
+            lhs = if op == '[' {
+                let rhs = expr_bp(lexer, 0);
+                assert_eq!(lexer.next(), Token::Op(']'));       // TODO: what to really use here
+                                                                // instead of assetrt_eq! ?
+                S::Cons(op, vec![lhs, rhs])
+            } else {
+                S::Cons(op, vec![lhs])
+            };
+
             continue;
         }
 
