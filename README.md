@@ -85,3 +85,39 @@ fn sum(p: &mut Parser) {
 
 
 
+### "Binding power" model
+
+Imagine the expression `A + B * C`. We expect that the `*` binds tighter than the `+`,
+and so we expect the expression to be parsed as `A + (B * C)`. 
+
+Rather than try to think about this expression in terms of precedence, imagine that 
+each operator has a numerical "binding power". The larger this number the more "powerful"
+binding is for that operator, and more powerful operators are bound ahead of less powerful
+ones.
+
+An example using the expression `A + B * C`:
+
+```
+expr:   A   +   B   *   C
+power:    3   3   5   5
+```
+
+For operators that have the same binding power we can model which one to fold by 
+making the powers slightly asymmetric (basically, by making the power on the right
+slightly higher).
+
+```
+expr:     A   +     B   +      C
+power: 0    3   3.1   3   3.1     0   # <- Note the (implicit) leading and trailng zero
+```
+
+Now the first `+` holds its operands tighter than its neighbours, and so we can fold
+the first expression into `(A + B)`.
+
+```
+expr:     (A+B)   +      C
+power: 0        3   3.1     0
+```
+
+The second `+` has a slightly higher binding power on the right and so prefers to bind
+to `C`. The first `+` captures both `A` and `B`.

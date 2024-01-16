@@ -74,12 +74,27 @@ impl fmt::Display for S {
 }
 
 
+// Note that the return contains an empty left binding power to make
+// clear that this is a prefix operator (and not a postfix operator)
+// and can therefore only bind to the right.
+fn prefix_binding_power(op: char) -> ((), u8)
+{
+    match op {
+        '+' | '-' => ((), 5),
+        _ => panic!("bad op {:?}", op),
+    }
+}
+
 fn infix_binding_power(op: char) -> (u8, u8)
 {
     match op {
         '+' | '-' => (1, 2),
         '*' | '/' => (3, 4),
-        '.' => (6, 5),          // high-priority right-associative function composition operator
+        // High-priority right-associative function composition operato
+        // Note that adding this one line is enough to implement the correct 
+        // precendence behaviour for this operator. Because the operator binds
+        // "higher" we automatically get the correct right-associativity.
+        '.' => (6, 5),          
         _ => panic!("bad op {:?}", op)
     }
 }
