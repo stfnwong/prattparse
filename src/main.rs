@@ -115,6 +115,11 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> S
 {
     let mut lhs = match lexer.next() {
         Token::Atom(it) => S::Atom(it),
+        Token::Op(op) => {
+            let ((), right_bp) = prefix_binding_power(op);  
+            let rhs = expr_bp(lexer, right_bp);  // right_bp used for rexcursive calls
+            S::Cons(op, vec![rhs])
+        }
         t => panic!("bad token {:?}", t),
     };
 
@@ -168,6 +173,12 @@ fn tests() {
     // This works even with the other operators 
     let s = expr("1 + 2 + f . g . h * 3 * 4");
     assert_eq!(s.to_string(), "(+ (+ 1 2) (* (* (. f (. g h)) 3) 4))");
+
+    let s = expr("--1 * 2");
+    assert_eq!(s.to_string(), "(* (- (- 1)) 2)");
+
+    let s = expr("--f . g");
+    assert_eq!(s.to_string(), "(- (- (. f g)))");
 }
 
 // === TESTS ==== //
