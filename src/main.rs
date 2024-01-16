@@ -95,9 +95,9 @@ fn postfix_binding_power(op: char) -> Option<(u8, ())>
     Some(res)
 }
 
-fn infix_binding_power(op: char) -> (u8, u8)
+fn infix_binding_power(op: char) -> Option<(u8, u8)>
 {
-    match op {
+    let res = match op {
         '+' | '-' => (1, 2),
         '*' | '/' => (3, 4),
         // High-priority right-associative function composition operato
@@ -105,8 +105,10 @@ fn infix_binding_power(op: char) -> (u8, u8)
         // precendence behaviour for this operator. Because the operator binds
         // "higher" we automatically get the correct right-associativity.
         '.' => (10, 9),          // NOTE: we need to bring these up higher than '!'
-        _ => panic!("bad op {:?}", op)
-    }
+        _ => return None,
+    };
+
+    Some(res)
 }
 
 // Start with two infix binary operators 
@@ -125,11 +127,18 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> S
 {
     let mut lhs = match lexer.next() {
         Token::Atom(it) => S::Atom(it),
+        // Add paren expressions here. These are just primary expressions that are 
+        // handled like ops.
+        Token::Op('(') => {
+            let lhs = expr_bp(lexer, 0);
+            assert_eq!(lexer.next(), Token::Op(')'));
+            lhs
+        },
         Token::Op(op) => {
             let ((), right_bp) = prefix_binding_power(op);  
             let rhs = expr_bp(lexer, right_bp);  // right_bp used for rexcursive calls
             S::Cons(op, vec![rhs])
-        }
+        },
         t => panic!("bad token {:?}", t),
     };
 
@@ -157,17 +166,23 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> S
         // to make the next recursive call.
         // In a way, min_bp represents the binding power of the operator
         // to the left of the current expression.
-        let (left_bp, right_bp) = infix_binding_power(op);
-        if left_bp < min_bp {
-            break;
+
+        // NOTE: Return None here on unrecognised operands. We do this 
+        // to create a terminating condition similar to postfix_binding_power.
+        if let Some((left_bp, right_bp)) = infix_binding_power(op) {
+            if left_bp < min_bp {
+                break;
+            }
+
+            lexer.next();
+            let rhs = expr_bp(lexer, right_bp);
+
+            // At this point we've parsed the correct right side, so we can assemble
+            // the current S-Expression.
+            lhs = S::Cons(op, vec![lhs, rhs]);
+            continue;
         }
-
-        lexer.next();
-        let rhs = expr_bp(lexer, right_bp);
-
-        // At this point we've parsed the correct right side, so we can assemble
-        // the current S-Expression.
-        lhs = S::Cons(op, vec![lhs, rhs]);
+        break;
     }
 
     return lhs;
@@ -206,6 +221,10 @@ fn tests() {
 
     let s = expr("f . g !");
     assert_eq!(s.to_string(), "(! (. f g))");
+
+    // Parenthesis expression test 
+    let s = expr("(((0)))");
+    assert_eq!(s.to_string(), "0");
 }
 
 
