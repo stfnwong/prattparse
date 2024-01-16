@@ -85,6 +85,16 @@ fn prefix_binding_power(op: char) -> ((), u8)
     }
 }
 
+fn postfix_binding_power(op: char) -> Option<(u8, ())>
+{
+    let res = match op {
+        '!' => (7, ()),
+        _ => return None,
+    };
+
+    Some(res)
+}
+
 fn infix_binding_power(op: char) -> (u8, u8)
 {
     match op {
@@ -94,7 +104,7 @@ fn infix_binding_power(op: char) -> (u8, u8)
         // Note that adding this one line is enough to implement the correct 
         // precendence behaviour for this operator. Because the operator binds
         // "higher" we automatically get the correct right-associativity.
-        '.' => (6, 5),          
+        '.' => (10, 9),          // NOTE: we need to bring these up higher than '!'
         _ => panic!("bad op {:?}", op)
     }
 }
@@ -129,6 +139,17 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> S
             Token::Op(op) => op,
             t => panic!("bad token {:?}", t),
         };
+
+        // First try to return a postfix operator 
+        if let Some((left_bp, ())) = postfix_binding_power(op) {
+            if left_bp < min_bp {
+                break;
+            }
+            lexer.next();
+
+            lhs = S::Cons(op, vec![lhs]);
+            continue;
+        }
 
         // Using the parameter min_bp here allows us to break the loop
         // once we see an operator weaker than the current one. We then 
@@ -179,7 +200,14 @@ fn tests() {
 
     let s = expr("--f . g");
     assert_eq!(s.to_string(), "(- (- (. f g)))");
+
+    let s = expr("-9!");
+    assert_eq!(s.to_string(), "(- (! 9))");
+
+    let s = expr("f . g !");
+    assert_eq!(s.to_string(), "(! (. f g))");
 }
+
 
 // === TESTS ==== //
 // TODO: move to another module?
