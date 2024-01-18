@@ -88,7 +88,8 @@ fn prefix_binding_power(op: char) -> ((), u8)
 fn postfix_binding_power(op: char) -> Option<(u8, ())>
 {
     let res = match op {
-        '!' => (7, ()),
+        '!' => (11, ()),
+        '[' => (11, ()),
         _ => return None,
     };
 
@@ -104,7 +105,7 @@ fn infix_binding_power(op: char) -> Option<(u8, u8)>
         // Note that adding this one line is enough to implement the correct 
         // precendence behaviour for this operator. Because the operator binds
         // "higher" we automatically get the correct right-associativity.
-        '.' => (10, 9),          // NOTE: we need to bring these up higher than '!'
+        '.' => (14, 13),          // NOTE: we need to bring these up higher than '!'
         _ => return None,
     };
 
@@ -237,6 +238,10 @@ fn tests() {
     // Parenthesis expression test 
     let s = expr("(((0)))");
     assert_eq!(s.to_string(), "0");
+
+    let s = expr("a[i][j]");
+    assert_eq!(s.to_string(), "([ ([ a i) j)");
+
 }
 
 
