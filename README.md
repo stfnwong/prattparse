@@ -8,7 +8,7 @@ If this is in a public repo and you are looking at it then you might as well jus
 ### Recursive Descent Parsing
 
 The idea in recursive descent parsing is that we model the grammar as a set of mutually
-recursive functins.  For instance, if we have a grammar like 
+recursive functions.  For instance, if we have a grammar like 
 
 ```
 Expr ::= 
@@ -121,3 +121,57 @@ power: 0        3   3.1     0
 
 The second `+` has a slightly higher binding power on the right and so prefers to bind
 to `C`. The first `+` captures both `A` and `B`.
+
+
+### On array operator ([])
+So there are ways to handle prefix, infix and postfix operators. The trick to something
+like a `[]` operator is rather than thinking of `a[i]` as a prefix `[`, an infix index 
+`i` and a postfix `]` to think of it as a kind of `()` operator. The `i` doesn't
+really have anything to do with the binding power of the operator itself. In an expression
+like `a[i]` its kind of like a `[]` operator that is postfix of `a`, but with an `i` 
+inside. Therefore we can treat the `[i]` as following `a`, and then treat the `[]` like 
+a parenthesis with a token inside. We can ignore binding/precedence since the `i` is 
+unambiguous - its just an expression we consume before we see a `]`.
+
+### On Ternary Operator 
+So the "hardest" one to handle is the ternary operator, which is often something like
+`cond ? e1 : e2`. Again the trick is to try and re-think this in terms of other operators
+that we have implemented previously. One alternative way to look at this is to write
+
+`cond ? e1 : e2`
+
+as 
+
+`cond [e1] e2`
+
+which makes it appear like a `[]` operator. The trick with `[]` was that it was postfix
+followed by parenthesis, and so `? :` can be thought of as a pair of parenthesis. 
+
+What should the associativity be? Consider the example
+
+`a ? b : c ? d : e`
+
+Since we can write `cond ? e1 : e2` as `cond [e1] e2`, we can ignore the parenthesied
+part of the expression (which we just parse like `[e1]`) and focus on the `cond` chain.
+This gives
+
+`a ?: c ?: e`
+
+We can choose parse this as either
+
+`(a ?: c) ?: e`   (left-associative)
+
+or as 
+
+`a ?: (c ?: e)`   (right-associative)
+
+It turns out that the right-associative reading is the more useful one. The priority of
+the `?` operator should also be low (this is the case in C for example). Implementing
+this operator with right-associativity is more useful for chains of operators like
+
+```
+a ? b :
+c ? d :
+e
+```
+
