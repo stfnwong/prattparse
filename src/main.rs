@@ -80,7 +80,7 @@ impl fmt::Display for S {
 fn prefix_binding_power(op: char) -> ((), u8)
 {
     match op {
-        '+' | '-' => ((), 5),
+        '+' | '-' => ((), 9),
         _ => panic!("bad op {:?}", op),
     }
 }
@@ -99,8 +99,10 @@ fn postfix_binding_power(op: char) -> Option<(u8, ())>
 fn infix_binding_power(op: char) -> Option<(u8, u8)>
 {
     let res = match op {
-        '+' | '-' => (1, 2),
-        '*' | '/' => (3, 4),
+        '=' => (2, 1),      // C-style assignment operator
+        '?' => (4, 3),
+        '+' | '-' => (5, 6),
+        '*' | '/' => (7, 8),
         // High-priority right-associative function composition operato
         // Note that adding this one line is enough to implement the correct 
         // precendence behaviour for this operator. Because the operator binds
@@ -188,11 +190,18 @@ fn expr_bp(lexer: &mut Lexer, min_bp: u8) -> S
             }
 
             lexer.next();
-            let rhs = expr_bp(lexer, right_bp);
 
-            // At this point we've parsed the correct right side, so we can assemble
-            // the current S-Expression.
-            lhs = S::Cons(op, vec![lhs, rhs]);
+            // Here we check the infix '?' operator
+            lhs = if op == '?' {
+                let mhs = expr_bp(lexer, 0);
+                assert_eq!(lexer.next(), Token::Op(':'));
+                let rhs = expr_bp(lexer, right_bp);
+                S::Cons(op, vec![lhs, mhs, rhs])
+            } else {
+                let rhs = expr_bp(lexer, right_bp);
+                S::Cons(op, vec![lhs, rhs])
+            };
+
             continue;
         }
         break;
@@ -242,6 +251,11 @@ fn tests() {
     let s = expr("a[i][j]");
     assert_eq!(s.to_string(), "([ ([ a i) j)");
 
+    let s = expr("a ? b : c ? d : e");
+    assert_eq!(s.to_string(), "(? a b (? c d e))");  // not of course there are 3 operands
+
+    let s = expr("a = 0 ? b : c = d");
+    assert_eq!(s.to_string(), "(= a (= (? 0 b c) d))");
 }
 
 
